@@ -177,16 +177,19 @@ the observing cameras are sufficiently high in the sky that no terrain
 points are occluded from the cameras (the latter could easily be modeled
 as well, as detailed in the text).
 
-To validate the accuracy of our approach we create an initial guess
-terrain using stereo with images
-artificially resampled by a factor of 10 from the originals, and run
-SfS to improve this terrain using the same coarse images. We compare
-the obtained terrain models before and after
-SfS with the ``ground truth'' terrain obtained from stereo at full
-resolution.  Alternatively, we ran SfS on full-resolution LRO NAC imagery,
-and used the independently acquired sparse LOLA dataset for validation.
-We show that with both appraoches SfS adds a wealth of new detail and improves
-the terrain accuracy. 
+We validate our approach using images from the Lunar Reconnaissance
+Orbiter Narrow Angle Camera (LRO NAC) \cite{robinson2010lunar}. These
+images have a resolution on the order of 1 m/pixel.  In the first
+approach, we create an initial guess terrain using stereo with images
+artificially resampled by a factor of 10 from the originals, and run SfS
+to improve this terrain using the same coarse images. We compare the
+obtained terrain models before and after SfS with the ``ground truth''
+terrain obtained from stereo at full resolution.  Alternatively, we ran
+SfS on full-resolution LRO NAC imagery, and used the independently
+acquired sparse Lunar Orbiter Laser Altimeter (LOLA) dataset
+\cite{smith2010initial} for validation.  We show that with both
+appraoches SfS adds a wealth of new detail and improves the terrain
+accuracy.
 
 Our SfS implementation is released as a software program as part of the
 NASA Ames Stereo Pipeline, a collection of open-source software for
@@ -254,10 +257,17 @@ bundle-adjustment to reduce camera errors. It does not use a smoothness
 penalty term which we found to be essential, and it does not do comparison with
 measurements.
 
-The work \cite{grumpe2011construction} is very intriguing. It does multi-image
-shape from shading for the Moon, and it uses hyperspectral images to infer
-the minerals on the surface and as consequence the spatially variable surface albedo
-that can then be added as a known quantity in the cost function.
+The work \cite{grumpe2011construction} is very intriguing. It does
+multi-image shape from shading for the Moon, and it uses hyperspectral
+images to infer the minerals on the surface and as consequence the
+spatially variable surface albedo that can then be added as a known
+quantity in the cost function. Their newer paper
+\cite{grumpe2014construction} uses very coarse input DEMs (the LOLA
+gridded DEM and the GLD100 DEM based on the Wide Angle Camera (WAC)
+imager), whose resolutions are on the order of 100 m/pixel, and their
+final results have an elevation error of about 30~m, while we start with
+LRO NAC based DEMs whose height error is on the order of a few meters
+and we further improve upon them with SfS.
 
 \cite{herbort2011reconstruction} is concerned with fusing single-image
 shape-from-shading with active range scanning for refining elevation
@@ -303,7 +313,7 @@ cameras. The cost function to be minimized is
 \int\!\! \int \! \sum_k \left[ I_k(\phi)(x, y) - T_k A(x, y)
  R_k(\phi)(x, y) \right]^2\,  \\
 + \mu \left\|\nabla^2 \phi(x, y) \right\|^2  
-+ \lambda \int \! \left[ \phi(x, y) - \phi_0(x, y) \right]^2
++ \lambda  \left[ \phi(x, y) - \phi_0(x, y) \right]^2
 \, dx\, dy.
 \end{multline}
 It is made of three terms, with weights $\mu > 0$ and $\lambda > 0$
@@ -319,8 +329,8 @@ enforces that the obtained terrain
 be reasonably smooth, and the weight $\mu$ is used to control the
 smoothness amount. The SfS solution is known to reveal high resolution
 detail, yet it may drift at larger spatial scales \cite{grumpe2014construction}.
-Hence the need for the third term, with the weight $\lambda,$ 
-that keeps the solution close the initial guess $\phi_0.$. 
+That is the reason for the third term, with the weight $\lambda,$ 
+that keeps the solution close the initial guess $\phi_0.$ 
 
 Here, $I_k(\phi)(x, y)$ is the $k$-th camera image interpolated at
 pixels obtained by projecting into the camera 3D points from the terrain
