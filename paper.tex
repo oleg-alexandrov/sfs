@@ -138,14 +138,14 @@ intensity recorded in images. It is based on the observation that the
 brightness of a surface point depends on the angle between the incident
 light ray and the surface normal (and in some models also on the
 location of the observer), which, given knowledge of the position of the
-light source and camera information can be used to infer terrain slopes,
+light source and camera information, can be used to infer terrain slopes,
 and by integration, the shape of the terrain itself.
 
 In this paper we are interested in applying shape-from-shading to
 recover high quality terrains from satellite images. We start from
 initial guess terrain, that can be obtained either using
 stereogrammetry, LIDAR data (examples can be LOLA or MOLA tracks,
-appropriately gridded), or a terrain at constant height. Shape-from-shading
+appropriately gridded), or a terrain at a constant height. Shape-from-shading
 is then used to refine this terrain.
 
 We consider realistic camera models, such as pinhole and pushbroom,
@@ -188,7 +188,7 @@ terrain obtained from stereo at full resolution.  Alternatively, we ran
 SfS on full-resolution LRO NAC imagery, and used the independently
 acquired sparse Lunar Orbiter Laser Altimeter (LOLA) dataset
 \cite{smith2010initial} for validation.  We show that with both
-appraoches SfS adds a wealth of new detail and improves the terrain
+approaches SfS adds a wealth of new detail and improves the terrain
 accuracy.
 
 Our SfS implementation is released as a software program as part of the
@@ -199,7 +199,7 @@ program works with USGS ISIS camera models, which is the standard for
 NASA planetary missions. The SfS tool has detailed documentation and
 usage examples, with pre-compiled binaries for Linux and OSX.
 
-\section{Comparison with Related Work}
+\section{Comparison With Related Work}
 \label{comp}
 
 
@@ -300,7 +300,7 @@ problem is given in \cite{jin20083}.
 
 \section{The Algorithm}
 
-\subsection{The cost function}
+\subsection{The Cost Function}
 
 We represent the terrain as a function $\phi(x, y),$ describing the heights
 over a sphere. This is sufficient for planetary applications,
@@ -344,7 +344,7 @@ $(x, y)$, and the exposure, camera position, and camera orientation for
 each image. We start with initial guesses for these parameters, and they
 can be independently kept fixed or varied.
 
-\subsection{Reflectance Model}
+\subsection{The Reflectance Model}
 \label{reflectance}
 
 A key ingredient in the SfS problem is the reflectance model to be used, which describes
@@ -375,8 +375,11 @@ with
 $$
 A = -0.019, \  B = 2.42\times 10^{-4}, \  C = -1.46 \times 10^{-6}.
 $$
+Notice that the reflectance formula lacks the albedo factor, that one we
+already factored out, as seen in Equation (\ref{cost}).
 
-Notice that the reflectance formula lacks the albedo factor, that one we already factored out, as seen in Equation (\ref{cost}). 
+We also experimented with the Hapke model. That is described in section 
+\ref{mars}.
 
 \subsection{Discretization}
 
@@ -385,7 +388,7 @@ domain of computation is a gridded rectangular box, and the terrain heights and
 albedo become matrices of numbers. Central differences are used to find
 the partial derivatives and surface normals.
 
-The values of the terrain heights and albedo at the boundary are being
+The values of the terrain heights and albedo at the boundary are 
 kept fixed during optimization.
 
 \subsection{Initialization}
@@ -393,15 +396,16 @@ kept fixed during optimization.
 We assume that the cameras have been calibrated, and have known
 positions and orientations. Bundle adjustment is optionally used to
 reduce the errors in camera position and orientation before running
-SfS. A known position for the illumination point sources is assumed as
+SfS. A known position for the illumination point source is assumed as
 well.
 
 Stereo on two of the images is used to get an initial guess for the
-terrain $\phi(x, y)$.  We have also tested our algorithm by starting
+terrain $\phi(x, y).$ We also tested our algorithm by starting
 with a constant terrain. The results returned by SfS in a such case look
-plausible but we did not quantify their accuracy.
+plausible but we did not quantify their accuracy. In principle,
+an initial surface obtained by any other means would work as well.
 
-The initial albedo $A(x, y)$ is set to be equal to 1 everywhere (hence
+The initial albedo $A(x, y)$ is set to 1 everywhere (hence
 its scale is absorbed into the image exposure). Then, using the fact that
 the image intensity equals the image exposure times albedo times
 reflectance, we derive the initial camera exposure for image $k$ as:
@@ -410,32 +414,33 @@ $$
 T_k = \frac{ \int\!\! \int \! I_k(\phi)(x, y) \,dx\,dy }{ \int\!\! \int \! R_k(\phi)(x, y) \,dx\,dy}.
 $$
 
-We have found the smoothness weight to be dependent on the images and
-the grid size being used in the discretized problem. Hence for each set
-up several values of this parameter should be tried (using say a few or
-just one of the images for speed), and its value to be chosen depending
-on which solution is closer to the ground truth or otherwise results in
-a terrain of satisfactory appearance, that is, a hillshaded image of this
-terrain appears rather similar to the input images, without much noise or
-excessive blur.
+We found the smoothness weight $\mu$ to be dependent on the instrument
+acquiring the images. Hence, for each set up several values of
+this parameter should be tried (using say a few or just one of the
+images for speed), and its value can be chosen depending on which
+solution is closer to the ground truth or otherwise results in a terrain
+of satisfactory appearance, that is, a hillshaded image of this terrain
+appears rather similar to the input images, without much noise or
+excessive blur. A value of $0.06$ to $0.12$ worked well in our experiments.
+For $\lambda$ we used a value of $10^{-4}$, increasing it sometimes up to $10^{-3}.$
 
-\subsection{Handling Errors in Camera Positions and Orientations}
+\subsection{Handling Errors In Camera Positions and Orientations}
 \label{multires}
 
 Often times, the positions and orientations of satellite cameras
 are not known sufficiently accurately, for example the position may be off by tens of meters or more.
 This results in the SfS algorithm converging to an incorrect local minimum. 
 
-One solution to this is to follow the well-established approach 
-of first solving the problem on coarser versions of the input
-images and terrain, in fact a pyramid of such datasets is used, with a
-scale factor of 2 between pyramid levels, and subsequently refining the
-obtained terrain and albedo while carrying over the exposures and camera
+We implemented the well-established approach of
+first solving the problem on coarser versions of the input images and
+terrain, in fact a pyramid of such datasets is used, with a scale factor
+of 2 between pyramid levels, and subsequently refining the obtained
+terrain and albedo while carrying over the exposures and camera
 positions and orientations obtained at the previous level. Larger errors
-in cameras require more pyramid levels. The first camera is kept fixed,
-to ensure that the terrain does not drift away.
+in cameras require more pyramid levels. Optionally, the first camera can
+be kept fixed, to ensure that the terrain does not drift away.
 
-In our experience this approach works for moderate positioning errors but is not 
+In our experience this approach works well for moderate positioning errors but is not 
 reliable when the errors are large. An alternative is to use bundle adjustment,
 which explicitly solves for camera adjustments so that matching features in
 all images correspond to the same ground landmark. This approach is highly 
@@ -459,7 +464,7 @@ as hillshading does not model that.
 \subsection{Shadow Threshold}
 \label{shadow}
 
-When using SfS on planetary bodies shadows cannot be avoided, and the
+When using SfS on planetary bodies, shadows cannot be avoided, and the
 problem is exacerbated towards the poles. Particularly on the Moon,
 shadows appear almost completely black and noisy. Simply minimizing the
 cost function (\ref{cost}) will result in shadowed areas being
@@ -482,22 +487,23 @@ threshold being the largest of the shadow pixel values selected so
 far. The tool also highlights in a different color the portions of the
 images that fall below the shadow threshold, making it possible to pick
 further points and increase the shadow threshold until visual inspection
-confirms that an adequate shadow threshold value was achieved.
+confirms that an adequate shadow threshold value was achieved. Using
+shadow thresholds has resulted in a measurable, if not dramatic,
+increase in accuracy.
 
-Using shadow thresholds has resulted in measurable increase in accuracy.
-
-\subsection{Occlusions from the Sun}
+\subsection{Occlusions From The Sun}
 
 Shadows can manifest themselves in different ways as well. At a given
-point on terrain the projection of this point into the camera image can
-result into an illuminated pixel, yet if a ray is traced from this point
-towards the Sun it may go through some portion of the current
-terrain. This suggests that an inconsistency is present. Either the
-current point's height (above the spherical planet) is too large and it
-should be pushed lower so that perhaps its projection into the camera
-falls into the correct shadowed region, or maybe the reverse must
-happen, the terrain region occluding this point from the Sun must be
-lowered so that the point can be illuminated in the simulated image.
+point on the terrain being optimized the projection of this point into
+the camera image can result into an illuminated pixel, yet if a ray is
+traced from this point towards the Sun it may go through some portion of
+the current terrain. This suggests that an inconsistency is
+present. Either the current point's height (above the spherical planet)
+is too large and it should be pushed lower so that perhaps its
+projection into the camera falls into the correct shadowed region, or
+maybe the reverse must happen, the terrain region occluding this point
+from the Sun must be lowered so that the ray going towards the Sun does not
+intersect it. 
 
 At such points we set the computed reflectance to zero (hence we ignore
 the local reflectance computed using the normal). Since the measured
@@ -528,7 +534,7 @@ terms from dominating the computation, though we did not use this feature.)
 
 \section{Results}
 
-We have tested our algorithm on Lunar images, both at low and high
+We tested our algorithm on Lunar images, both at low and high
 latitudes, with one or more images, and with and without modeling
 shadows.  We used data from the Lunar Reconnaissance Orbiter Narrow
 Angle Camera (LRO NAC) from
@@ -536,41 +542,41 @@ Angle Camera (LRO NAC) from
 camera. The images come at about 1 m/pixel ground resolution. The
 original datasets were converted to the USGS ISIS format, then we
 performed radiometric calibration and echo correction before using them.
+We also experimented with images from Mars and Charon (the satellite of Pluto).
 
-
-\subsection{Single-image SfS}
+\subsection{Single-Image SfS}
 \label{single}
 
 Here we use LRO NAC image M139939938LE that is at a latitude of about
-$85^\circ$ south. To get an initial guess for SfS we created a terrain
+$85^\circ$ South. To get an initial guess for SfS we created a terrain
 model at 1 m/pixel (the image resolution) with the NASA Ames Stereo
 Pipeline, pairing this image with the dataset M139946735RE. SfS was run
 with the first image only.
 
 The smoothness weight was set to $\mu=0.08,$ and we used
-$\lambda=0.0001,$ and we used Lunar-Lambertian
-reflectance. The terrain model is of size $456 \times 410$ pixels. 
-The results are seen in Figure \ref{fig:sfs1}.  Here we
-have no ground truth to compare against, but it appears that the
-optimized terrain has a lot more detail without moving too far.
+$\lambda=10^{-4},$ and the Lunar-Lambertian reflectance. The terrain
+model is of size $456 \times 410$ pixels. The results are seen in Figure
+\ref{fig:sfs1}.  Here we have no ground truth to compare against, but it
+appears that the optimized terrain has a lot more detail without moving
+too far.
 
 \begin{figure}[h!]
 \begin{center}
 \includegraphics[width=6in]{figures/sfs1.jpg}
 \caption[sfs]{Single-image SfS. The images are, from left to right, the
-  initial hill-shaded terrain, the hill-shaded terrain obtained from
+  initial hill-shaded terrain from stereo, the hill-shaded terrain obtained from
   SfS, the image used for SfS (draped over the initial terrain), and the
   absolute height difference of the initial and final terrains, where
-  the brightest shade of red corresponds to a 2 meter height
+  the brightest shade of red corresponds to a 2~m height
   difference.}
 \label{fig:sfs1}
 \end{center}
 \end{figure}
 
-It is important to note that the numerical artifacts seen in in the
+It is important to note that the numerical artifacts seen in the
 original terrain are not quite unexpected. Since the images are at 1
 m/pixel, the terrain obtained from stereo has an effective
-resolution on the order of about 5 meters/pixel (since stereo matches
+resolution on the order of about 5 m/pixel (since stereo matches
 image patches rather than individual pixels) and here we rendered it at
 1 m/pixel, so it is not unreasonable that stereo could not resolve
 fine details and that noise jumps into view. 
@@ -582,21 +588,21 @@ given that we have just one input image.  We also did not model shadows
 and occlusions. It can be seen that small shadowed areas have been
 handled rather gracefully.
 
-\subsection{Multi-image SfS at low latitudes}
+\subsection{Multi-Image SfS At Low Latitudes}
 \label{multiple}
 
 \begin{figure}[h!]
 \includegraphics[width=6in]{figures/sfs2.jpg}
     \caption[Photoclinometry example]{
       \label{fig:sfs2} Multi-image SfS at low latitudes. Top row (left-to-right): original
-      images, coarsened by a factor of 10, so at 10 meters/pixel (draped
+      images, coarsened by a factor of 10, so at 10 m/pixel (draped
       onto the ground truth terrain). Middle row (left-to-right):
-      Initial guess terrain at 10 meters/pixel, the result of running
+      Initial guess terrain at 10 m/pixel, the result of running
       shape-from-shading on these three images with the given initial
       guess, and the ``ground truth'' terrain. Bottom row: The absolute
       error between the initial guess to SfS and the ground truth, the absolute error
       between the SfS output and the ground truth (the brightest shade of
-      red correspond to a 10 meter elevation error), and the optimized albedo.}
+      red corresponds to a 10~m elevation error), and the optimized albedo.}
 \end{figure}
 
 Here we used LRO NAC images M1121224102LE, M1121209902LE, M1098830077LE, and M1149488705LE 
@@ -608,27 +614,25 @@ four images, with interest points picked manually, as the illumination
 conditions were too different for the automated interest point
 detection to work. 
 
-To be able to estimate the accuracy of the SfS results we purposefully
+To be able to estimate the accuracy of SfS, we purposefully
 worked with images made coarser by a factor of 10 (hence at 10
-meters/pixel). We created an initial guess for SfS by running stereo on
+m/pixel). We created an initial guess for SfS by running stereo on
 the first two of these coarsened images, then we ran SfS with the first,
 third, and fourth coarse images (the second image was sufficiently
 similar to the first one that we thought it would not add much
 information). We used the terrain obtained using stereo with the first
-of the two original images at 1 m/pixel as ground truth for
+two original images at 1 m/pixel as ``ground truth'' for
 validation (with the terrain heights binned to a 10 m/pixel grid to be
 consistent with the SfS terrain). We applied a rigid alignment to the
 ``ground truth'' terrain to make it as close as possible to the coarse
 terrain used as input to SfS.  And we investigated if SfS can make the
-coarse terrain even closer to the ground truth.
+coarse terrain even closer to the ``ground truth''.
 
 In this example we varied the terrain, albedo, and image exposures, and
 used the Lunar-Lambertian model.  The terrain was on a grid of size
 $196\times 223$ pixels. The smoothing weight $\mu$ was set to 0.08 and
 the weight $\lambda$ constraining the solution close to the initial
-guess was $0.0001$.
-
-After optimization, the mean error to the ``ground truth'' DEM went
+guess was $10^{-4}$. After optimization, the mean error to the ``ground truth'' DEM went
 down from 1.60~m to 1.02~m, while the standard deviation
 decreased from 1.92~m to 0.93~m. The results are seen in Figure \ref{fig:sfs2}.
 
@@ -636,7 +640,7 @@ In this example we did not vary the camera positions and poses as part
 of the optimization problem, since they were-predetermined using bundle adjustment. When trying
 to doing to, the results were within a few centimeters of the above. 
 
-\subsection{Multi-image SfS at high latitudes with shadow modeling}
+\subsection{Multi-Image SfS At High Latitudes With Shadow Modeling}
 
 \begin{figure}[h!]
 \begin{center}
@@ -650,20 +654,27 @@ images used in SfS, draped onto the ground truth DEM.}
 \end{figure}
 
 
-Here, like in section \ref{single}, we worked at $85^\circ$ latitude South
-on the Moon, and used the similarly looking images
-M139939938LE and M139946735RE to run stereo. We have also employed images M173004270LE, M122270273LE, and M119922302RE, and we ran SfS on the first, third, fourth, and fifth 
-of these (the second image being rather similar to the first should not add much additional information).
+Here, like in section \ref{single}, we worked at $85^\circ$ latitude
+South on the Moon, and used the similarly looking images M139939938LE
+and M139946735RE to run stereo. We also employed images M173004270LE,
+M122270273LE, and M119922302RE, and we ran SfS on the first, third,
+fourth, and fifth of these (the second image being rather similar to the
+first should not add much additional information).
 
-As in section \ref{multiple}, we used  stereo with the original 1 m/pixel
-images to create the ``ground truth'' terrain, while SfS was run
-with images 10 times coarser. SfS was initialized using stereo from the same coarse images. Validation was done as earlier as well.
+As in section \ref{multiple}, we used stereo with the original 1 m/pixel
+images to create the ``ground truth'' terrain, while SfS was run with
+images 10 times coarser. SfS was initialized using stereo from the same
+coarse images. Validation was done as earlier as well.
 
-As before, we performed bundle-adjustment with manually picked interest points to reduce the initial camera errors, and then ran SfS without the
+As before, we performed bundle-adjustment with manually picked interest
+points to reduce the initial camera errors, and then ran SfS without the
 multi-resolution approach. Since large shadows are present, we used
-shadow thresholds as described in section \ref{shadow}. We used the Lunar-Lambertian model. The terrain
-being optimized was $102 \times 100$ pixels in size. We again varied the terrain, camera positions
-and orientations, and image exposures. We did not float the albedo as there were no obvious albedo variations. The smoothness weight was set to $\mu=0.12$ and we used $\lambda=0.0001.$
+shadow thresholds as described in section \ref{shadow}. We used the
+Lunar-Lambertian model. The terrain being optimized was $102 \times 100$
+pixels in size. We again varied the terrain, camera positions and
+orientations, and image exposures. We did not float the albedo as there
+were no obvious albedo variations. The smoothness weight was set to
+$\mu=0.12$ and we used $\lambda=10^{-4}.$
 
 As result of SfS, the mean error between the shape being optimized and
 the ground truth decreased from 2.77~m to 1.52~m, while the standard
@@ -681,17 +692,17 @@ the mean and standard deviation of the error compared to the ground truth are, a
 1.58~m and 2.21~m. We can see that, as expected, the Lunar-Lambertian performs
 better than the Lambertian model. 
 
-We also experimented with not varying the camera parameters as part of the optimization problem, and the results became a little worse.
-The results are also somewhat worse if the albedo is floated. The insight here is that floating albedo should
-only enabled if albedo variations are obviously seen, and it is perhaps suggested to experiment with both floating and not floating
-the albedo, as this being a complex problem with imperfect reflectance modeling, it is not clear beforehand how the results may turn out.
+We also experimented with not varying the camera parameters as part of
+the optimization problem, and the results became a little worse.  The
+results are also somewhat worse if the albedo is floated. The insight
+here is that floating the albedo should only be enabled if albedo
+variations are obviously seen in the imagery, and it is perhaps
+suggested to experiment with both floating and not floating it, as this
+being a complex problem with imperfect reflectance modeling, it is not
+clear beforehand which strategy will yield the best results.
 
-\subsection{Large-scale high-resolution SfS and comparison with ground truth}
+\subsection{Large-Scale High-resolution SfS And Comparison With LOLA}
 \label{lola}
-So far, we ran SfS mostly on small clips and on images at 1/10-th the original resolution,
-reserving the terrain obtained from the original high-resolution images as
-``ground truth''. 
-
 \begin{figure}[h!]
 \begin{center}
 \includegraphics[width=3in]{figures/sfs_lola_before.jpg}
@@ -701,18 +712,19 @@ before SfS (left) and after SfS (right), with LOLA tracks super-imposed for illu
 \label{fig:sfslola}
 \end{center}
 \end{figure}
-
-Here we perform multi-image SfS using full-resolution imagery, and
+So far, we ran SfS mostly on small clips and on images at 1/10-th the original resolution,
+reserving the terrain obtained from the original high-resolution images as
+``ground truth''.  Here, we perform multi-image SfS using full-resolution imagery, and
 validation with independently acquired ground truth, in the form of the
 Lunar Orbiter Laser Altimeter (LOLA) dataset \cite{zuber2010lunar}. We
 show that SfS can work on a large terrain, which requires
-partitioning and different sets of images to be used for SfS for each
+partitioning it, and different sets of images to be used for SfS for each
 partition.  Hence we show that in principle SfS can scale to arbitrarily
 large terrains given sufficient overlapping images from various
 illumination conditions covering each portion that terrain.
 
 LOLA is a dataset of height measurements on the lunar surface, consisting
-of tracks that go North-to-South. The points in each track are separated by about 20 meters,
+of tracks that go North-to-South. The points in each track are separated by about 20~m,
 and the distance between tracks is about 1.25 km at the equator, narrowing down 
 towards the poles. The nominal vertical precision of each point is about 10 cm, but the actual error
 is about 1~m (we discuss this further in the next section). Hence, this dataset is sparse, but it can still provide a measure of certainty that 
@@ -735,13 +747,13 @@ helps constrain the problem well and obtain more accurate results.
 We first performed bundle-adjustment of all 7 images (the 6 images
 mentioned earlier, as well as of M104318871RE, which together with
 M104311715RE forms a stereo pair that was used to create the terrain for the
-SfS guess) to eliminate camera alignment errors which would make SfS
+SfS initial guess) to eliminate camera alignment errors which would make SfS
 inaccurate. Here we could not use the multi-resolution approach outlined
-in section \ref{multires} as the six images overlapped only in a very
+in section \ref{multires}, as the 7 images overlapped only in a very
 narrow area. Automatic interest point detection failed, as illumination
 conditions were too different, so we just picked manually features in
 each of the images corresponding to the same set of landmarks on the
-ground (we used about 10 landmarks in in this experiment).
+ground.
 
 The two regions were still too large for SfS to work efficiently,
 so they were further subdivided into tiles of about $300 \times 300$ pixels,
@@ -763,12 +775,11 @@ Lunar-Lambertian reflectance model.  Floating the albedo improve the
 results by a very small amount. Using the Lambertian model makes the results somewhat worse, but still an improvement
 from the initial guess to SfS.
 
-We repeated the same experiment near the Apollo 16 landing site and for two
-other datasets at $85^\circ$ longitude South. In each case the error compared
-to LOLA went down after SfS, though not hugely so.
-
-For all experiments we used the regularization term weight $\mu = 0.06$ and the 
-distance constraint weight $\lambda = 0.001.$
+We repeated the same experiment near the Apollo 16 landing site and for
+two other datasets at $85^\circ$ longitude South. In each case the error
+compared to LOLA went down after SfS, though not hugely so. For all
+experiments we used the regularization term weight $\mu = 0.06$ and the
+distance constraint weight $\lambda = 10^{-3}.$
 
 As a final remark, we would like to note that in this experiment as
 initial guess for SfS we used the terrain obtained from stereo of images
@@ -780,13 +791,13 @@ extra difficulty here would be that after stereo and SfS is run on each
 portion, the optimized terrain regions need to be aligned to LOLA
 individually, before being merged.
 
-\subsection{Comparison with LOLA using reduced-resolution images}
+\subsection{Comparison With LOLA Using Reduced-Resolution Images}
 
 While LOLA has a nominal ranging precision of 10~cm (that is, this is the measurement
 error between the laser instrument and the point it hits on the ground), there exist uncertainties in 
 determining the spacecraft position at any time. Overall, the global accuracy of the LOLA topographic
-model is on the order of 1~m (or more precisely, $0.8 \pm 1.5$~m) \cite{smith2011results}. Hence, it is not surprising that the results
-from the previous section are, while a good sanity check, somewhat inconclusive.
+model is on the order of 1~m \cite{smith2011results}. Hence, it is not surprising that the results
+from the previous section are, while a good sanity check, not a dramatic improvement.
 
 To make the comparison with LOLA more relevant we need to study situations when the error
 between stereo and LOLA is noticeably larger than the uncertainty in LOLA itself. For that purpose,
@@ -796,17 +807,21 @@ by a factor of 4, hence the new images have an effective resolution of 4 m/pixel
 a stereo terrain from the first two images, then ran SfS on all images sans the second (which is
 too similar to the first one). 
 
-The stereo terrain was $434\times 456$ pixels and at a resolution of 4 m/pixel
-(hence covering a region of size about 2 km in size). This region intersected 7 North-to-South LOLA tracks
-and the ground had sufficient topography variation (the standard deviation of the terrain height was 16 meters)
-that we felt confident aligning the terrain to LOLA. After alignment to LOLA, the mean error
-between these two datasets was 2.30~m with a standard deviation of 2.04~m. We ran SfS using
-the Lunar-Lambertian model, floating the albedo and the cameras, with the weights $\mu=0.06$
-and $\lambda=0.00025.$ We aligned the result of SfS to LOLA as well. The obtained mean error after SfS
-compared to LOLA was 1.64~m and the standard deviation was 1.50~m, a large improvement. 
+The stereo terrain was $434\times 456$ pixels and at a resolution of 4
+m/pixel (hence covering a region of about 1.8~km in size). This
+region intersected 7 North-to-South LOLA tracks and the ground had
+sufficient topography variation (the standard deviation of the terrain
+height was 16~m) that we felt confident aligning the terrain to
+LOLA. After alignment to LOLA, the mean error between these two datasets
+was 2.30~m with a standard deviation of 2.04~m. We ran SfS using the
+Lunar-Lambertian model, floating the albedo and the cameras, with the
+weights $\mu=0.06$ and $\lambda=2.5\times 10^{-4}.$ We aligned the
+result of SfS to LOLA as well. The obtained mean error after SfS
+compared to LOLA was 1.64~m and the standard deviation was 1.50~m, a
+large improvement.
 
-\subsection{SfS on other planets}
-
+\subsection{SfS On Other Planets}
+\label{mars}
 
 \begin{figure}[h!]
 \begin{center}
@@ -836,7 +851,7 @@ at 1/10th of the original resolution for SfS, and then validate with
 stereo terrain from the full resolution images.
 
 Mars has an atmosphere, which gives rise to atmospheric scattering,
-which we did not model, and a large variety of materials on its surface
+which we did not model, and a large variety of minerals on its surface,
 and hence of ways in which it reflects light. The reflectance model used for 
 Mars is usually the Hapke model \cite{hapke2008bidirectional}, \cite{hapke1993opposition}.
 This model has 3 or 5 parameters $\omega, b, c,$ and then also $h$ and $B_0,$ 
@@ -854,7 +869,7 @@ reflectance modeling, as well as modeling atmospheric effects. The lack of diver
 in illumination conditions in the imagery (also for other Mars instruments) will continue to be an issue.
 
 We also experimented with Charon, the moon of Pluto, using images from
-the New Horizons flyby mission. Since this mission had just a very short
+the New Horizons flyby mission. Since this mission had a very short
 window in which to acquire images, the illumination conditions are the
 same in all of them. This is the reason why we believe using more than
 one image (as opposed to just one) did not show any improvement in
@@ -862,7 +877,7 @@ surface detail after performing SfS. We got the best-looking results
 using Lambertian reflectance. An illustration is shown in Figure
 \ref{fig:sfscharon}.
 
-\section{Conclusion and Future Work}
+\section{Conclusion And Future Work}
 
 We implemented a shape-from-shading algorithm that models aspects of the
 problem not often considered simultaneously in literature, such as
@@ -872,7 +887,7 @@ light source being low in the sky, shadows, and rigorous valuation with
 ground truth. 
 
 The SfS algorithm was shown to perform very well for Lunar images, both
-at low and high latitudes. In each of our experiements we saw a wealth
+at low and high latitudes. In each of our experiments we saw a wealth
 of new detail after SfS, and the stereo artifacts were eliminated. We
 estimated the accuracy of SfS in three different ways: comparison with
 higher resolution dense terrain, comparison with the sparse LOLA dataset
@@ -919,7 +934,7 @@ process.
 \section{Acknowledgments}
 
 We gratefully acknowledge the Resource Prospector project at NASA Ames
-Research Center, for providing support for this research.
+Research Center for providing support for this research.
 
 We would like to thank our colleagues Ara V. Nefian and Uland Wong, with whom we had
 many insightful discussions about shape-from-shading while writing this
