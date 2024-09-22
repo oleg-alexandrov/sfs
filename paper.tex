@@ -123,7 +123,9 @@
   to create an initial terrain model which is then optimized. We show
   that shape-from-shading is able to recover more detail than
   obtained from stereo, while eliminating stereo numerical artifacts and
-  improving the terrain accuracy. Our implementation is released as
+  improving the terrain accuracy. We validated our approach 
+  on a very large scale region (10 km $\times$ 10 km at 1 m/pixel)
+  on the Moon in difficult illumination conditions. Our implementation is released as
   open-source software as part of the NASA Ames Stereo Pipeline.
 \end{abstract}
 
@@ -248,7 +250,10 @@ stereo as an initial guess. It assumes constant albedo, and Lambertian
 reflectance, no shadows, and accurate camera information.  The thesis
 \cite{lux2011multi} is in similar vein. It has an example for SfS
 applied to asteroid reconstruction, but using the Lambertian model and
-without comparison to measurements.
+without comparison to measurements. The more recent work
+\cite{lenoch2017multi} also looks at integrating multi-view SfS with
+stereo; the application is for metallic objects with various analytical
+reflectance models.
 
 The paper \citet{lohse2006derivation} considers multi-image
 shape-from-shading for the Moon. It uses the Lunar-Lambertian reflectance
@@ -295,8 +300,18 @@ they use a single image, and constrain the problem using a much
 lower-resolution DEM, and their results only show that visually things
 look promising.
 
-A mathematical analysis of the well-posedness of the multi-view SfS
-problem is given in \cite{jin20083}.
+The interesting work \cite{yang2017new} proposes to do away with 
+simple reflectance models like the Lambertian, and instead fit a 
+model based on radial basis functions to the data. In \cite{yang2017shape}
+it is explored solving the SfS problem using deep neural networks.
+
+A few papers attempt a more theoretical study of the SfS problem. A
+mathematical analysis of the well-posedness of multi-view SfS is given
+in \cite{jin20083}. An intriguing new paper that does a careful analysis
+of the effect of the direction of illumination on the final solved shape
+slope errors (assuming the Lambertian model) is
+\cite{liu2018effects}. In \cite{camilli2017unified} it is studied how to
+make the SfS problem well-posed for some Non-Lambertian models.
 
 \section{The Algorithm}
 

@@ -6,7 +6,7 @@ if [ "$#" -lt 1 ]; then echo Usage: $0 link dem; exit; fi
 
 # Steps to do before using this script:
 #  - Visit http://ode.rsl.wustl.edu/moon/indexproductsearch.aspx
-#  - Select the LROC EDR product, a search area, and search.
+#  - Select the LROC EDR product, NAC option, a search area, and search.
 #  - Click to view the results in a table.
 #  - Click on "Output Results" (which takes forever).
 #  - Save the obtained text file.
@@ -17,7 +17,7 @@ if [ "$#" -lt 1 ]; then echo Usage: $0 link dem; exit; fi
 
 # To call this on a portion of that list, run:
 
-# ./fetch_chunk.sh list.txt beg end
+# ./fetch_chunk.sh list.txt chunkSize chunkIndex
 # which will call this script.
 
 # Note that below we parse some html, which is fragile, as the html code can easily change,
@@ -31,36 +31,23 @@ if [ "$(echo $link | grep -i .img)" != "" ]; then
     url=$link
 else
     # Fetch the page at the link
-    id=$(echo $link | perl -p -e "s#^.*?product_id=(\w*).*?\$#\$1#g")
-    
+    id=$(echo $link | perl -p -e "s#^.*?product_id=\w*\.*([\w]*?)\&.*?\$#\$1#g") 
     out=$id.html
-    echo Fetch: $link
+    echo Fetch: $link and save to $out
     wget "$link" -O $out  > /dev/null 2>&1
     
     # Parse the url to the actual product. Can have both http and https
-    url=$(cat $out | grep $id.IMG |grep lroc.asu.edu | head -n 1 | perl -p -e "s#^.*?(http\w*://pds.lroc.asu.edu[^\'\"]*?IMG).*?\n#\$1#g")
+    url=$(grep -i $id $out |grep -i href |grep IMG | head -n 1 | perl -pi -e "s#^.*?href=\"(.*?\.IMG).*?\$#\$1#g" |grep -i $id)
 fi
 
 echo url=$url
 
-# If no luck, need to go to a subpage first
-if [ "$url" = "" ]; then
-    key=$(cat $out |grep -i "frame name" |grep -i productPageAtlas | perl -p -e "s#^.*?src=\"(productPageAtlas.*?)\".*?\n#\$1#g")
-
-    key="http://ode.rsl.wustl.edu/moon/$key"
-    echo Fetch: $key
-
-    wget "$key" -O $out > /dev/null 2>&1
-
-    key=$(cat $out |grep -i "ASU" | grep -i hlExternalLink | perl -p -e "s#^.*?href=\"(.*?)\".*?\$#\$1#g")
-    echo Fetch: $key
-    wget "$key" -O $out > /dev/null 2>&1
-
-    url=$(cat $out |grep -i "Download EDR" | perl -p -e "s#^.*?href=\"(.*?)\".*?\$#\$1#g")
-    echo url=$url
+# If empty, that means we failed, so exit
+if [ "$url" == "" ]; then 
+echo "Error: Failed to parse the url from the page $link"; 
+  exit 1; 
 fi
 
-# Fetch the .IMG
 prefix=$(echo $url| perl -p -e "s#^.*\/(.*?)\..*?\$#\$1#g")
 img="$prefix.IMG"
 
@@ -97,19 +84,20 @@ fi
 if [ -f "$cam" ]; then  
     echo Will use local cam file $cam
 else
-    $HOME/miniconda3/envs/ale_env/bin/python ~/projects/sfs/gen_csm.py $cub
+    $HOME/miniconda3/envs/asp_deps/bin/python ~/projects/sfs/gen_csm.py $cub
 fi
-
 
 if [ ! -f "$cub" ]; then echo "Error: Missing cub file $cub"; exit 1; fi
 if [ ! -f "$cam" ]; then echo "Error: Missing cam file $cam"; exit 1; fi
 
-if [ ! -f "$map" ]; then
-    prog=mapproject
-    /usr/bin/time -f "$prog finished. Elapsed=%E memory=%M (kb)." $prog --tr 10 $dem $cub $cam $map
-else
-    echo Will use local map file $map
+# if dem is not an empty string, then we will use it
+if [ "$dem" != "" ]; then
+    if [ ! -f "$map" ]; then
+        prog=mapproject
+        /usr/bin/time -f "$prog finished. Elapsed=%E memory=%M (kb)." $prog --tr 10 $dem $cub $cam $map --processes 4 --threads 2
+    else
+        echo Will use local map file $map
+    fi
+
+    stereo_gui --create-image-pyramids-only $map
 fi
-
-stereo_gui --create-image-pyramids-only $map
-
